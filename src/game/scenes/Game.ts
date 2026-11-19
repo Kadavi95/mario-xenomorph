@@ -2,8 +2,18 @@ import { Input, Scene } from 'phaser';
 import { ambientMusic } from '../ambientMusic';
 
 type Enemy = Phaser.Physics.Arcade.Sprite & { patrolLeft?: number; patrolRight?: number };
+type Coin = Phaser.Physics.Arcade.Sprite & { paletteIndex?: number };
 type Obstacle = Phaser.Physics.Arcade.Sprite & { kind?: 'pipe' | 'brick' | 'question'; used?: boolean; mark?: Phaser.GameObjects.Text };
 type PlatformSpec = { x: number; y: number; width: number; height: number };
+const COLOR_STYLES = [
+    { hat: 0xd94b44, coin: 0xff6347, light: 0xffc5a4, dark: 0x912e41 },
+    { hat: 0x2878d0, coin: 0x318fff, light: 0xb2e3ff, dark: 0x174b9b },
+    { hat: 0x2b9f59, coin: 0x36c878, light: 0xc5ff9b, dark: 0x176340 },
+    { hat: 0x9656d8, coin: 0xb273f4, light: 0xf0c0ff, dark: 0x603598 },
+    { hat: 0xe77924, coin: 0xffa12f, light: 0xffe891, dark: 0xa34c19 },
+    { hat: 0xd73e82, coin: 0xf154a0, light: 0xffc2df, dark: 0x8d2858 },
+    { hat: 0x198f9a, coin: 0x28c6c5, light: 0xb9fff1, dark: 0x12656d },
+];
 type LevelSpec = {
     name: string; sky: number; far: number; near: number; ground: number; trim: number; sun: number;
     platforms: PlatformSpec[]; coins: [number, number][]; enemies: [number, number, number][];
@@ -69,14 +79,16 @@ export class Game extends Scene {
     private readonly levelWidth = 4700;
     private levelIndex = 0;
     private level!: LevelSpec;
+    private hatIndex = 0;
 
     constructor() {
         super('Game');
     }
 
-    create(data: { levelIndex?: number; score?: number } = {}) {
+    create(data: { levelIndex?: number; score?: number; hatIndex?: number } = {}) {
         this.levelIndex = Math.max(0, Math.min(data.levelIndex ?? 0, LEVELS.length - 1));
         this.level = LEVELS[this.levelIndex];
+        this.hatIndex = Math.max(0, Math.min(data.hatIndex ?? 0, COLOR_STYLES.length - 1));
         ambientMusic.setTheme(this.levelIndex);
         this.score = data.score ?? 0;
         this.lives = 3;
@@ -95,7 +107,7 @@ export class Game extends Scene {
         this.addPlatform(4200, 520, 1000, 40);
         this.createObstacles();
 
-        this.player = this.physics.add.sprite(90, 430, 'hero').setDepth(5);
+        this.player = this.physics.add.sprite(90, 430, `hero-style-${this.hatIndex}`).setDepth(5);
         this.player.setCollideWorldBounds(true);
         this.player.setBounce(0.02);
         this.player.setSize(28, 40).setOffset(10, 8);
@@ -105,12 +117,17 @@ export class Game extends Scene {
         this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
 
         this.coins = this.physics.add.group({ allowGravity: false, immovable: true });
-        this.level.coins.forEach(([x, y]) => this.coins.create(x, y, 'bitcoin-token'));
-        [[2920, 430], [2990, 360], [3060, 430], [3200, 350], [3370, 290], [3540, 430], [3710, 360], [3890, 300], [4050, 430], [4280, 360], [4440, 300], [4570, 430]].forEach(([x, y]) => this.coins.create(x, y, 'bitcoin-token'));
-        this.tweens.add({ targets: this.coins.getChildren(), scaleX: 0.55, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
-        this.physics.add.overlap(this.player, this.coins, (_player, coin) => {
+        this.level.coins.forEach(([x, y]) => this.addCoin(x, y));
+        [[2920, 430], [2990, 360], [3060, 430], [3200, 350], [3370, 290], [3540, 430], [3710, 360], [3890, 300], [4050, 430], [4280, 360], [4440, 300], [4570, 430]].forEach(([x, y]) => this.addCoin(x, y));
+        this.physics.add.overlap(this.player, this.coins, (_player, coinObject) => {
+            const coin = coinObject as Coin;
+            const collectedPalette = coin.paletteIndex;
             coin.destroy();
             ambientMusic.playCoin();
+            if (collectedPalette !== undefined) {
+                this.hatIndex = collectedPalette;
+                this.player.setTexture(`hero-style-${this.hatIndex}`);
+            }
             this.score += 10;
             this.updateScoreLabel();
         });
@@ -176,40 +193,46 @@ export class Game extends Scene {
         if (time < this.invulnerableUntil) this.player.setAlpha(Math.floor(time / 90) % 2 ? 0.35 : 1);
         else this.player.setAlpha(1);
         if (this.player.y > 590) this.loseLife();
-        if (this.player.x > 4580) this.scene.start('GameOver', { won: true, levelIndex: this.levelIndex, score: this.score });
+        if (this.player.x > 4580) this.scene.start('GameOver', { won: true, levelIndex: this.levelIndex, score: this.score, hatIndex: this.hatIndex });
     }
 
     private createTextures() {
         const g = this.make.graphics({ x: 0, y: 0 });
-        if (!this.textures.exists('hero')) {
-            g.fillStyle(0x342b3d).fillRoundedRect(10, 37, 14, 13, 5).fillRoundedRect(27, 37, 14, 13, 5);
-            g.fillStyle(0x286da5).fillRoundedRect(10, 30, 30, 17, 7);
-            g.fillStyle(0x54a7d9).fillRoundedRect(13, 33, 24, 8, 4);
-            g.fillStyle(0xf4bd8c).fillRoundedRect(10, 13, 30, 25, 9);
-            g.fillStyle(0xe49a74).fillEllipse(13, 27, 7, 10);
-            g.fillStyle(0x342b3d).fillCircle(29, 24, 2).fillCircle(35, 24, 2);
-            g.fillStyle(0xf6f2df).fillCircle(29, 23, 0.8).fillCircle(35, 23, 0.8);
-            g.fillStyle(0x714235).fillEllipse(29, 31, 13, 5);
-            g.fillStyle(0xd94b44).fillRoundedRect(7, 5, 36, 13, 6).fillRoundedRect(2, 13, 25, 6, 3);
-            g.fillStyle(0xf4cf75).fillRoundedRect(23, 12, 19, 5, 3);
-            g.fillStyle(0xf4bd8c).fillRoundedRect(5, 24, 8, 13, 4).fillRoundedRect(38, 24, 8, 13, 4);
-            g.fillStyle(0xffe7c0).fillCircle(8, 37, 3).fillCircle(42, 37, 3);
-            g.generateTexture('hero', 48, 52);
-        }
-        g.clear();
-        if (!this.textures.exists('bitcoin-token')) {
-            g.fillStyle(0x874312).fillEllipse(20, 21, 38, 38);
-            g.fillStyle(0xffb521).fillEllipse(20, 19, 36, 36);
-            g.fillStyle(0xffe071).fillEllipse(18, 17, 27, 29);
-            g.lineStyle(2, 0xfff3b4, 0.9).strokeEllipse(20, 19, 29, 31);
-            // A bold, engraved B with the pair of vertical strokes used by Bitcoin.
-            g.fillStyle(0x9c5b16).fillRect(15, 8, 2, 7).fillRect(20, 8, 2, 7);
-            g.fillRoundedRect(16, 11, 13, 9, 4).fillRoundedRect(16, 18, 15, 12, 5);
-            g.fillStyle(0xffdf70).fillCircle(20, 15.5, 2.2).fillCircle(20, 24, 2.6);
-            g.fillStyle(0x9c5b16).fillRect(15, 28, 2, 7).fillRect(20, 29, 2, 7);
-            g.fillStyle(0xffffff, 0.45).fillEllipse(11, 10, 5, 8);
-            g.generateTexture('bitcoin-token', 40, 40);
-        }
+        COLOR_STYLES.forEach((style, index) => {
+            const heroKey = `hero-style-${index}`;
+            if (!this.textures.exists(heroKey)) {
+                g.clear();
+                g.fillStyle(0x342b3d).fillRoundedRect(10, 37, 14, 13, 5).fillRoundedRect(27, 37, 14, 13, 5);
+                g.fillStyle(0x286da5).fillRoundedRect(10, 30, 30, 17, 7);
+                g.fillStyle(0x54a7d9).fillRoundedRect(13, 33, 24, 8, 4);
+                g.fillStyle(0xf4bd8c).fillRoundedRect(10, 13, 30, 25, 9);
+                g.fillStyle(0xe49a74).fillEllipse(13, 27, 7, 10);
+                g.fillStyle(0x342b3d).fillCircle(29, 24, 2).fillCircle(35, 24, 2);
+                g.fillStyle(0xf6f2df).fillCircle(29, 23, 0.8).fillCircle(35, 23, 0.8);
+                g.fillStyle(0x714235).fillEllipse(29, 31, 13, 5);
+                g.fillStyle(style.hat).fillRoundedRect(7, 5, 36, 13, 6).fillRoundedRect(2, 13, 25, 6, 3);
+                g.fillStyle(0xf4cf75).fillRoundedRect(23, 12, 19, 5, 3);
+                g.fillStyle(0xf4bd8c).fillRoundedRect(5, 24, 8, 13, 4).fillRoundedRect(38, 24, 8, 13, 4);
+                g.fillStyle(0xffe7c0).fillCircle(8, 37, 3).fillCircle(42, 37, 3);
+                g.generateTexture(heroKey, 48, 52);
+            }
+
+            const coinKey = `bitcoin-token-${index}`;
+            if (!this.textures.exists(coinKey)) {
+                g.clear();
+                g.fillStyle(style.dark).fillEllipse(20, 21, 38, 38);
+                g.fillStyle(style.coin).fillEllipse(20, 19, 36, 36);
+                g.fillStyle(style.light).fillEllipse(18, 17, 27, 29);
+                g.lineStyle(2, style.light, 0.9).strokeEllipse(20, 19, 29, 31);
+                // Keep the Bitcoin engraving; only the coin's color changes.
+                g.fillStyle(style.dark).fillRect(15, 8, 2, 7).fillRect(20, 8, 2, 7);
+                g.fillRoundedRect(16, 11, 13, 9, 4).fillRoundedRect(16, 18, 15, 12, 5);
+                g.fillStyle(style.light).fillCircle(20, 15.5, 2.2).fillCircle(20, 24, 2.6);
+                g.fillStyle(style.dark).fillRect(15, 28, 2, 7).fillRect(20, 29, 2, 7);
+                g.fillStyle(0xffffff, 0.45).fillEllipse(11, 10, 5, 8);
+                g.generateTexture(coinKey, 40, 40);
+            }
+        });
         g.clear();
         if (!this.textures.exists('enemy')) {
             // Glossy biomechanical alien silhouette: smooth cranial dome, ribbed torso, claws and a segmented tail.
@@ -452,9 +475,28 @@ export class Game extends Scene {
         obstacle.used = true;
         obstacle.setTexture('used-block');
         obstacle.mark?.setVisible(false);
+        this.addCoin(obstacle.x, obstacle.y - 49, true);
         this.score += 50;
         this.updateScoreLabel();
         this.tweens.add({ targets: obstacle, y: obstacle.y - 8, duration: 75, yoyo: true, ease: 'Quad.Out' });
+    }
+
+    private addCoin(x: number, y: number, eject = false) {
+        const paletteIndex = Math.floor(Math.random() * COLOR_STYLES.length);
+        const coin = this.coins.create(x, y, `bitcoin-token-${paletteIndex}`) as Coin;
+        coin.paletteIndex = paletteIndex;
+        this.tweens.add({ targets: coin, scaleX: 0.55, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.InOut' });
+
+        if (eject) {
+            const body = coin.body as Phaser.Physics.Arcade.Body;
+            body.immovable = false;
+            body.moves = true;
+            body.allowGravity = true;
+            coin.setVelocity(0, -360);
+            this.physics.add.collider(coin, this.platforms);
+            this.physics.add.collider(coin, this.solidObstacles);
+        }
+        return coin;
     }
 
     private addPlatform(x: number, y: number, width: number, height: number) {
@@ -513,7 +555,7 @@ export class Game extends Scene {
         this.playDeathLine();
         this.livesLabel.setText('♥ '.repeat(this.lives).trim());
         if (this.lives <= 0) {
-            this.scene.start('GameOver', { won: false, levelIndex: this.levelIndex, score: this.score });
+            this.scene.start('GameOver', { won: false, levelIndex: this.levelIndex, score: this.score, hatIndex: this.hatIndex });
             return;
         }
         this.invulnerableUntil = this.time.now + 1500;

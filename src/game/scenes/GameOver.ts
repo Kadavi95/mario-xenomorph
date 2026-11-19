@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 
-type ResultData = { won?: boolean; levelIndex?: number; score?: number };
+type ResultData = { won?: boolean; levelIndex?: number; score?: number; hatIndex?: number };
 
 const STAGES = ['ZIELONA DOLINA', 'PUSTYNIA SŁOŃCA', 'ZAMEK NA KSIĘŻYCU'];
 
@@ -49,6 +49,6 @@ export class GameOver extends Scene {
     private continueGame(data: ResultData, stage: number, final: boolean) {
         const levelIndex = data.won ? (final ? 0 : stage + 1) : stage;
         const score = final ? 0 : (data.score ?? 0);
-        this.scene.start('Game', { levelIndex, score });
+        this.scene.start('Game', { levelIndex, score, hatIndex: final ? 0 : (data.hatIndex ?? 0) });
     }
 }
