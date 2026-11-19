@@ -179,6 +179,7 @@ export class Game extends Scene {
             const enemy = object as Enemy;
             const enemyBody = enemy.body as Phaser.Physics.Arcade.Body;
             if (!enemy.active || !enemyBody) return;
+            enemy.setFlipX(this.player.x > enemy.x);
             if (enemy.x <= enemy.patrolLeft! || enemy.x >= enemy.patrolRight!) enemy.setVelocityX(enemy.x <= enemy.patrolLeft! ? 65 : -65);
             if (enemyBody.blocked.left) enemy.setVelocityX(65);
             if (enemyBody.blocked.right) enemy.setVelocityX(-65);
@@ -234,49 +235,48 @@ export class Game extends Scene {
             }
         });
         g.clear();
-        if (!this.textures.exists('enemy')) {
-            // Glossy biomechanical alien silhouette: smooth cranial dome, ribbed torso, claws and a segmented tail.
-            g.fillStyle(0x081218).fillEllipse(48, 55, 26, 34);
-            g.fillStyle(0x182c34).fillEllipse(47, 52, 19, 29);
-            g.fillStyle(0x34515a, 0.9).fillEllipse(44, 50, 6, 23);
-            g.fillStyle(0x071116).fillEllipse(49, 24, 24, 36);
-            g.fillStyle(0x1d343d).fillEllipse(47, 21, 18, 29);
-            g.fillStyle(0x49616a, 0.9).fillEllipse(43, 16, 7, 21);
-            g.fillStyle(0x0c171d).fillTriangle(39, 34, 50, 31, 46, 43);
-            g.fillStyle(0x7bc0bd, 0.8).fillEllipse(49, 38, 4, 2);
-            g.fillStyle(0x090f15).fillTriangle(45, 39, 53, 39, 49, 48);
-            g.fillStyle(0x81b7b4, 0.85).fillRect(48, 39, 2, 7);
+        if (!this.textures.exists('xenomorph-profile')) {
+            // Side profile facing left: the smooth dome and claws face the player, the tail trails behind.
+            g.lineStyle(8, 0x091419, 1);
+            g.lineBetween(72, 65, 87, 68); g.lineBetween(87, 68, 101, 74); g.lineBetween(101, 74, 109, 82); g.lineBetween(109, 82, 106, 89); g.lineBetween(106, 89, 95, 92);
+            g.lineStyle(2, 0x4b6870, 0.95);
+            g.lineBetween(71, 64, 86, 67); g.lineBetween(86, 67, 100, 73); g.lineBetween(100, 73, 108, 81); g.lineBetween(108, 81, 105, 88);
+            [[87, 68], [101, 74], [109, 82], [106, 89]].forEach(([x, y]) => g.fillStyle(0x769097).fillCircle(x, y, 1.6));
+            g.fillStyle(0x111f26).fillEllipse(94, 89, 13, 5);
 
-            // Segmented shoulder pipes and the raised dorsal ridges.
-            g.lineStyle(5, 0x0a151b, 1);
-            g.lineBetween(36, 46, 30, 52); g.lineBetween(31, 51, 35, 58); g.lineBetween(60, 46, 67, 52); g.lineBetween(67, 52, 63, 60);
-            g.lineStyle(2, 0x567078, 0.95);
-            g.lineBetween(37, 45, 32, 51); g.lineBetween(60, 45, 65, 51);
-            for (let i = 0; i < 4; i++) {
-                const y = 48 + i * 6;
-                g.lineStyle(2, 0x0a151b, 1); g.lineBetween(39, y, 57, y + 1);
-                g.lineStyle(1, 0x628087, 0.9); g.lineBetween(41, y - 1, 56, y);
-            }
-            g.fillStyle(0x101d24).fillTriangle(39, 39, 35, 27, 43, 36).fillTriangle(50, 37, 53, 24, 56, 39).fillTriangle(59, 43, 65, 34, 62, 47);
-            g.fillStyle(0x526c72, 0.8).fillTriangle(38, 35, 36, 29, 41, 37).fillTriangle(52, 35, 54, 28, 55, 37);
+            // Hunched torso, one visible ribbed flank, and the near-side leg.
+            g.fillStyle(0x081218).fillEllipse(63, 57, 40, 29);
+            g.fillStyle(0x182c34).fillEllipse(59, 53, 29, 22);
+            g.fillStyle(0x34515a, 0.9).fillEllipse(55, 51, 8, 17);
+            g.lineStyle(2, 0x0a151b, 1);
+            g.lineBetween(48, 47, 45, 63); g.lineBetween(54, 44, 51, 65); g.lineBetween(60, 43, 58, 66); g.lineBetween(66, 44, 66, 64);
+            g.lineStyle(1, 0x628087, 0.9);
+            g.lineBetween(49, 47, 46, 60); g.lineBetween(55, 45, 53, 62); g.lineBetween(61, 44, 60, 63);
+            g.lineStyle(9, 0x091419, 1); g.lineBetween(58, 65, 53, 77); g.lineBetween(53, 77, 48, 90);
+            g.lineStyle(3, 0x405960, 1); g.lineBetween(57, 67, 52, 78);
+            g.fillStyle(0x111f26).fillEllipse(45, 91, 17, 6);
+            g.fillStyle(0x789096, 0.9).fillTriangle(38, 91, 44, 89, 40, 96);
+            g.lineStyle(7, 0x0a151b, 1); g.lineBetween(69, 64, 76, 76); g.lineBetween(76, 76, 83, 88);
+            g.fillStyle(0x1d3038).fillEllipse(82, 88, 17, 6);
 
-            // Long arms with hooked fingers.
-            g.lineStyle(7, 0x091419, 1); g.lineBetween(34, 51, 25, 65); g.lineBetween(25, 65, 21, 76); g.lineBetween(61, 51, 70, 64); g.lineBetween(70, 64, 74, 75);
-            g.lineStyle(2, 0x405960, 0.95); g.lineBetween(32, 53, 24, 65); g.lineBetween(63, 53, 71, 64);
-            g.fillStyle(0x0a1319).fillTriangle(18, 74, 23, 75, 17, 84).fillTriangle(22, 74, 26, 75, 24, 84);
-            g.fillStyle(0x0a1319).fillTriangle(72, 74, 77, 74, 79, 83).fillTriangle(68, 73, 72, 74, 73, 82);
+            // Long smooth cranial dome, narrow eye slit, and hooked jaw pointing left.
+            g.fillStyle(0x071116).fillEllipse(40, 27, 53, 26);
+            g.fillStyle(0x1d343d).fillEllipse(42, 23, 42, 18);
+            g.fillStyle(0x49616a, 0.9).fillEllipse(46, 19, 29, 7);
+            g.fillStyle(0x101d24).fillTriangle(18, 27, 34, 29, 22, 35);
+            g.fillStyle(0x7bc0bd, 0.9).fillRoundedRect(20, 28, 8, 2, 1);
+            g.fillStyle(0x090f15).fillTriangle(18, 31, 35, 34, 24, 41);
+            g.fillStyle(0x81b7b4, 0.9).fillTriangle(20, 33, 24, 34, 22, 38).fillTriangle(26, 34, 30, 35, 28, 39);
+            g.fillStyle(0x0c171d).fillRoundedRect(36, 37, 17, 16, 6);
+            g.fillStyle(0x567078, 0.85).fillRect(40, 39, 2, 8).fillRect(47, 40, 2, 8);
 
-            // Digitigrade legs and small polished armor plates.
-            g.lineStyle(10, 0x091419, 1); g.lineBetween(41, 66, 35, 77); g.lineBetween(35, 77, 29, 89); g.lineBetween(55, 66, 61, 77); g.lineBetween(61, 77, 68, 89);
-            g.lineStyle(3, 0x405960, 1); g.lineBetween(40, 67, 34, 77); g.lineBetween(56, 67, 62, 77);
-            g.fillStyle(0x111f26).fillEllipse(28, 89, 14, 6).fillEllipse(69, 89, 14, 6);
-            g.fillStyle(0x789096, 0.9).fillTriangle(22, 89, 27, 88, 23, 94).fillTriangle(64, 88, 70, 89, 72, 94);
-
-            // Tail arcs behind the body; individual joints catch a cold blue highlight.
-            g.lineStyle(8, 0x091419, 1); g.lineBetween(43, 62, 30, 67); g.lineBetween(30, 67, 19, 74); g.lineBetween(19, 74, 12, 82); g.lineBetween(12, 82, 14, 89); g.lineBetween(14, 89, 23, 92);
-            g.lineStyle(2, 0x4b6870, 0.95); g.lineBetween(42, 61, 29, 66); g.lineBetween(29, 66, 18, 73); g.lineBetween(18, 73, 12, 81); g.lineBetween(12, 81, 14, 88);
-            [[30, 67], [19, 74], [12, 82], [14, 89]].forEach(([x, y]) => g.fillStyle(0x769097).fillCircle(x, y, 1.5));
-            g.generateTexture('enemy', 88, 98);
+            // Dorsal tubes and the long forward arm with two hooked fingers.
+            g.fillStyle(0x101d24).fillTriangle(54, 42, 60, 30, 64, 46).fillTriangle(66, 43, 76, 33, 73, 51).fillTriangle(79, 49, 89, 43, 84, 56);
+            g.fillStyle(0x526c72, 0.8).fillTriangle(57, 40, 60, 33, 62, 44).fillTriangle(70, 42, 76, 36, 73, 48);
+            g.lineStyle(7, 0x091419, 1); g.lineBetween(47, 48, 37, 60); g.lineBetween(37, 60, 28, 72);
+            g.lineStyle(2, 0x405960, 0.95); g.lineBetween(45, 49, 36, 61);
+            g.fillStyle(0x0a1319).fillTriangle(23, 70, 29, 72, 22, 82).fillTriangle(29, 72, 34, 70, 34, 80);
+            g.generateTexture('xenomorph-profile', 112, 100);
         }
         g.clear();
         if (!this.textures.exists('flag')) {
@@ -514,9 +514,9 @@ export class Game extends Scene {
     }
 
     private addEnemy(x: number, y: number, left: number, right: number) {
-        const enemy = this.enemies.create(x, y, 'enemy') as Enemy;
-        enemy.setDisplaySize(66, 74);
-        enemy.setSize(42, 66).setOffset(23, 20);
+        const enemy = this.enemies.create(x, y, 'xenomorph-profile') as Enemy;
+        enemy.setDisplaySize(84, 75);
+        enemy.setSize(48, 68).setOffset(32, 18);
         enemy.patrolLeft = left;
         enemy.patrolRight = right;
         enemy.setCollideWorldBounds(true).setBounce(0);
